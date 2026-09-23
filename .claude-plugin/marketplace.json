@@ -1,0 +1,14 @@
+{
+  "name": "claude-pr-review",
+  "description": "Claude PR review from CI: the ci-review-pr skill used by this repo's reusable workflow.",
+  "owner": {
+    "name": "Popover"
+  },
+  "plugins": [
+    {
+      "name": "pr-review",
+      "source": "./plugins/pr-review",
+      "description": "The ci-review-pr skill: one Claude review round on a pull request, run from CI."
+    }
+  ]
+}

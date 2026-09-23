@@ -1,0 +1,5 @@
+{
+  "name": "pr-review",
+  "description": "The ci-review-pr skill: one Claude review round on a pull request, run from CI.",
+  "author": { "name": "Popover" }
+}
