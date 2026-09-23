@@ -179,10 +179,11 @@ privately, not here.
    stub, deletes its `.claude/skills/ci-review-pr/`, and moves repo-specific
    prose into `.github/pr-review-notes.md`. Proven when a PR after the
    conversion gets a formal `claude[bot]` review.
-   **State:** both conversion PRs are open. Their own runs resolved the shared
-   workflow, the personal-account one included, so the cross-owner call
-   works. Both then hit the expected validation skip, which confirms the
-   check compares the caller's file. Remaining proof after merge: plugin
-   install and a posted review.
+   **State:** the personal-account repo is proven end to end (2026-09-23): a
+   smoke-test PR after the merge got the plugin installed inside the action,
+   the notes file read from the base branch, and a formal `claude[bot]`
+   review on Opus 5.5. The conversion PRs' own runs had already shown the
+   cross-owner call resolves and that the validation check compares the
+   caller's file. The PopoverAI repo's conversion is not yet merged.
 3. **Convert the remaining callers**, including one that runs the stock
    `code-review` plugin rather than this pattern.
