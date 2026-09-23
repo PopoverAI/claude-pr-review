@@ -172,7 +172,7 @@ privately, not here.
    carrying the skill, README with the caller stub, this doc. Done
    2026-09-23. The plugin was checked by installing it from the GitHub URL
    into a clean config, where it registers as `/pr-review:ci-review-pr`.
-2. **Convert one repo per owner first** — a PopoverAI repo and a
+2. ~~**Convert one repo per owner first**~~ — a PopoverAI repo and a
    personal-account repo, which covers the untested part: the cross-owner
    call, the plugin install, and the validation check against a caller stub.
    A conversion replaces the repo's `.github/workflows/pr-review.yml` with the
@@ -184,6 +184,7 @@ privately, not here.
    the notes file read from the base branch, and a formal `claude[bot]`
    review on Opus 5.5. The conversion PRs' own runs had already shown the
    cross-owner call resolves and that the validation check compares the
-   caller's file. The PopoverAI repo's conversion is not yet merged.
+   caller's file. The PopoverAI repo is proven the same way, with
+   `release_branch` set (a release PR round has not yet run under it).
 3. **Convert the remaining callers**, including one that runs the stock
    `code-review` plugin rather than this pattern.
