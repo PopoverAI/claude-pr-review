@@ -186,8 +186,8 @@ privately, not here.
    cross-owner call resolves and that the validation check compares the
    caller's file. The PopoverAI repo is proven the same way, with
    `release_branch` set (a release PR round has not yet run under it).
-3. **Convert the remaining callers**, including one that ran the stock
-   `code-review` plugin rather than this pattern. All converted 2026-09-23;
-   all but one proven on a smoke-test PR. The last one's smoke test failed
-   on that repo's own expired OAuth token (401), after the plugin installed,
-   and waits on a fresh token.
+3. ~~**Convert the remaining callers**~~, including one that ran the stock
+   `code-review` plugin rather than this pattern. All converted and proven
+   on smoke-test PRs 2026-09-23. One first failed on that repo's own invalid
+   OAuth token (401, after the plugin installed) and passed once the token
+   was replaced.
