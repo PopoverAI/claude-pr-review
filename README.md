@@ -28,6 +28,7 @@ jobs:
     uses: PopoverAI/claude-pr-review/.github/workflows/pr-review.yml@main
     # with:
     #   release_branch: production  # if release PRs target a branch of their own
+    #   deploys_on_merge: true      # if merging a PR ships it to production
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
@@ -38,6 +39,16 @@ the caller cancels the run.
 
 The review starts with the first PR after this file reaches the default branch.
 The PR that adds it gets no review.
+
+## Repos that deploy on merge
+
+By default an approval ends the review: later pushes aren't reviewed unless a
+commit subject carries `[re-review]`. Set `deploys_on_merge: true` when merging
+a PR ships it to production with no release PR behind it. Then every push gets
+a round, and the `review / review` check goes red when a push has no review or
+the round requests changes, so it can serve as a required check. A push that
+only merges the base branch gets a round about how the incoming work interacts
+with the PR.
 
 ## Repo-specific notes
 

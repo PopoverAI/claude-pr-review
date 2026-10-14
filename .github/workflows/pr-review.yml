@@ -18,6 +18,13 @@ on:
           release branch.
         type: string
         default: ""
+      deploys_on_merge:
+        description: >-
+          True when merging a PR ships it to production, with no release PR
+          behind it. Every push then gets a round, an approval ends nothing,
+          and the check fails when the round's review requests changes.
+        type: boolean
+        default: false
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: true
@@ -45,6 +52,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           ASSOC: ${{ github.event.pull_request.author_association }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          DEPLOYS_ON_MERGE: ${{ inputs.deploys_on_merge }}
         run: |
           # pipefail: every gh-api-into-jq pipe below otherwise reports jq's
           # exit code, so a transient API failure yields empty output and the
@@ -103,6 +111,17 @@ jobs:
           last_state=$(echo "$verdicts" | jq -r 'last | .state // "NONE"')
           count=$(echo "$reviews" | jq 'length')
 
+          # Where a merge ships to production, nothing reviews a push after
+          # the PR does, so every push gets a round and an approval ends
+          # nothing. The approval gate below doesn't apply.
+          if [ "$DEPLOYS_ON_MERGE" = "true" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "prior=$count" >> "$GITHUB_OUTPUT"
+            echo "rereview=false" >> "$GITHUB_OUTPUT"
+            echo "Reviewing: this repo deploys on merge, so every push gets a round."
+            exit 0
+          fi
+
           rereview=false
           if [ "$last_state" = "APPROVED" ]; then
             # [re-review] in the subject line of any commit the approval
@@ -155,7 +174,7 @@ jobs:
           # marketplace is cloned from its default branch on every run.
           plugin_marketplaces: https://github.com/PopoverAI/claude-pr-review.git
           plugins: pr-review@claude-pr-review
-          prompt: "/pr-review:ci-review-pr ${{ github.event.pull_request.number }} ${{ inputs.release_branch }}"
+          prompt: "/pr-review:ci-review-pr ${{ github.event.pull_request.number }} ${{ inputs.release_branch }}${{ inputs.deploys_on_merge && ' --deploys-on-merge' || '' }}"
           # The run log is the only visibility into a review that goes wrong.
           show_full_output: true
           claude_args: >-
@@ -177,6 +196,7 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           PRIOR: ${{ steps.decide.outputs.prior }}
           REREVIEW: ${{ steps.decide.outputs.rereview }}
+          DEPLOYS_ON_MERGE: ${{ inputs.deploys_on_merge }}
         run: |
           # pipefail, as in the decide step: without it a transient gh api
           # failure yields an empty count and this assertion exits green
@@ -197,6 +217,30 @@ jobs:
           # Not on a re-review round: there the standing APPROVED is the very
           # review being reopened, not a licence for silence.
           pr_state=$(gh pr view "$PR" --json state --jq .state)
+          if [ "$DEPLOYS_ON_MERGE" = "true" ]; then
+            # Where a merge ships to production, this check is the merge
+            # gate: red until this push has a review, and red while the
+            # round's review requests changes. Merging over a finding the
+            # owner has accepted takes the ruleset bypass, a deliberate act.
+            # The round's review is the latest one with a body; a bodiless
+            # COMMENTED review only carries inline comments.
+            if [ "$pr_state" != "OPEN" ]; then
+              echo 'Skipping: the PR is no longer open.'
+              exit 0
+            fi
+            if [ "$after" -le "$PRIOR" ]; then
+              echo '::error::No claude[bot] review was submitted for this push. Check the action log above. "Workflow validation failed" means this PR changes the calling workflow file; that is expected on the PR that adds or edits it, and reviews resume once it merges.'
+              exit 1
+            fi
+            round_state=$(echo "$reviews" \
+              | jq -r '[.[] | select((.body // "") != "")] | last | .state // "NONE"')
+            if [ "$round_state" = "CHANGES_REQUESTED" ]; then
+              echo '::error::The reviewer requested changes. Address the review, or merge with the bypass if you have decided to accept the finding.'
+              exit 1
+            fi
+            echo "claude[bot] reviews: $PRIOR before, $after after; this round: $round_state."
+            exit 0
+          fi
           if [ "$pr_state" != "OPEN" ] || { [ "$last_state" = "APPROVED" ] && [ "$REREVIEW" != "true" ]; }; then
             echo 'Skipping: the review agent was entitled to post nothing.'
             exit 0

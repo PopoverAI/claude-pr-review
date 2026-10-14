@@ -49,6 +49,19 @@ Each fact in the flow has an idiomatic carrier:
   the skill's backstop. The assert step exempts a run from the
   review-was-posted check when the PR stands APPROVED — except on a re-review
   round, where that standing approval is the review being reopened.
+- **Where merging ships to production, nothing ends the review.** A caller
+  sets `deploys_on_merge: true` when there is no release PR behind the PR
+  review, so a push after an approval would otherwise reach users unreviewed.
+  The decide step then runs every push, the skill doesn't stop on an
+  approval, and the assert step becomes a merge gate: red when the push got
+  no review or the round's review (the latest one with a body) requests
+  changes. Overriding it is the ruleset bypass, a deliberate act. A push
+  that only merges the base branch — the PR's own diff has the same
+  `git patch-id --verbatim` (whitespace counts) as at the last reviewed
+  commit — gets an update round on
+  how the incoming work interacts with the PR. Without the input, the
+  approval rule below holds unchanged. First caller: dotrequirements, moving
+  to continuous deployment (its `docs/working/continuous-deployment.md`).
 - **Model is the workflow's call, level is the agent's.** Every round runs
   on Opus 5.5, pinned by full ID (`claude-opus-5-5`). The CLI's `opus` alias
   follows whatever Claude Code version the Action bundles, so it would change
@@ -56,8 +69,9 @@ Each fact in the flow has an idiomatic carrier:
   (`high` on round 1), not a different model. The level is picked per round in
   proportion to risk — a blog-post release legitimately gets `low` at the
   release gate.
-- **REQUEST_CHANGES is advisory.** No branch protection; the outcome surfaces
-  in the merge box and blocks nothing.
+- **REQUEST_CHANGES is advisory** unless the caller deploys on merge (above).
+  No branch protection; the outcome surfaces in the merge box and blocks
+  nothing.
 - **Work sessions keep their pickup — but the review body alone won't wake
   them.** The desktop "Auto-fix pull requests" monitor relays inline review
   comments, issue comments, and CI failures into the linked session; it does
