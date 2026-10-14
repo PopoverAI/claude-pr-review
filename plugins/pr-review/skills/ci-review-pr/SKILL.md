@@ -71,9 +71,14 @@ base, leaving the PR's own changes as they were at that commit:
 ```bash
 last=<that commit_id>
 git cat-file -e "$last^{commit}" 2>/dev/null \
-  && [ "$(git diff "$(git merge-base "origin/<baseRefName>" "$last")" "$last" | git patch-id --stable)" \
-     = "$(git diff "origin/<baseRefName>...HEAD" | git patch-id --stable)" ]
+  && [ "$(git diff "$(git merge-base "origin/<baseRefName>" "$last")" "$last" | git patch-id --verbatim)" \
+     = "$(git diff "origin/<baseRefName>...HEAD" | git patch-id --verbatim)" ]
 ```
+
+(`--verbatim`, not `--stable`: `--stable` ignores whitespace, so a push
+that only re-indents the PR's own code, which changes meaning in Python or
+YAML, would pass as update-only. Both ignore line numbers, so the base
+shifting lines around the PR's changes still counts as an update.)
 
 Success makes this an **update round**: the PR's own diff is unchanged, and
 what is new is the work that came in from the base branch, already reviewed

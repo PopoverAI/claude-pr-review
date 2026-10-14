@@ -57,7 +57,8 @@ Each fact in the flow has an idiomatic carrier:
   no review or the round's review (the latest one with a body) requests
   changes. Overriding it is the ruleset bypass, a deliberate act. A push
   that only merges the base branch — the PR's own diff has the same
-  `git patch-id` as at the last reviewed commit — gets an update round on
+  `git patch-id --verbatim` (whitespace counts) as at the last reviewed
+  commit — gets an update round on
   how the incoming work interacts with the PR. Without the input, the
   approval rule below holds unchanged. First caller: dotrequirements, moving
   to continuous deployment (its `docs/working/continuous-deployment.md`).
