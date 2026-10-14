@@ -134,6 +134,12 @@ it when the Action bumps Claude Code, since the table changes upstream.
   instructions, covers prose differences such as where tickets live.
 - **The trust gate is always on.** It skips PRs from forks by people without
   write access; in a private repo it never fires.
+- **The dotrequirements agent's PRs are reviewed like anyone's.** The
+  action refuses a run triggered by a bot unless it is on `allowed_bots`, so
+  the workflow names the `dot-requirements` GitHub App there. Until
+  2026-10-14 every review on its PRs failed with "Workflow initiated by
+  non-human actor". It is named rather than `'*'`, which on a public repo
+  would let any outside App start a review with text it controls.
 - **The token is passed explicitly.** `secrets: inherit` works only within
   one org, so each caller forwards `CLAUDE_CODE_OAUTH_TOKEN`. PopoverAI repos
   can share an org secret; personal-account repos each hold a copy.
