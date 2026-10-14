@@ -1,17 +1,21 @@
 ---
 name: ci-review-pr
-description: Run one review round on a pull request from CI, as claude[bot]. Reads the PR's review history, picks an effort level in proportion to risk, runs the built-in /code-review engine, and submits one formal GitHub review carrying the outcome. Invoked by the shared PopoverAI/claude-pr-review workflow with the PR number (and the repo's release branch, if it has one) as arguments; not intended for interactive use.
+description: Run one review round on a pull request from CI, as claude[bot]. Reads the PR's review history, picks an effort level in proportion to risk, runs the built-in /code-review engine, and submits one formal GitHub review carrying the outcome. Invoked by the shared PopoverAI/claude-pr-review workflow with the PR number (and the repo's release branch, if it has one, and `--deploys-on-merge` when merging ships to production) as arguments; not intended for interactive use.
 ---
 
 # /ci-review-pr
 
 You are the reviewer for this pull request, for this round. The first skill
 argument is the PR number. A second argument, when present, names this repo's
-release branch: a PR whose base is that branch is a release PR. You run inside a GitHub Actions job whose `gh` is
+release branch: a PR whose base is that branch is a release PR. An argument
+`--deploys-on-merge` (a flag, never a release branch) means merging this PR
+ships it to production with nothing reviewing it afterwards; the differences
+that makes are marked **Deploys on merge** below. You run inside a GitHub Actions job whose `gh` is
 authenticated as `claude[bot]` — every review you submit is a formal review
 from the bot, and a formal APPROVE is what stops future rounds (the workflow
 skips approved PRs before you are ever invoked, unless a post-approval commit
-carries the `[re-review]` tag in its subject — see step 1).
+carries the `[re-review]` tag in its subject — see step 1). **Deploys on
+merge:** an approval stops nothing; every push gets a round.
 
 The engine — the built-in `/code-review` skill — is how you look at the diff.
 It is canonical and not yours to second-guess or evaluate. Everything around it
@@ -57,6 +61,27 @@ approved PR, and the workflow invoked you for the same reason — you are the
 backstop for both halves of the rule, the skip and the exception. Your
 baseline is the approved commit: the question is what changed since it, and
 whether the approval still holds. (The workflow gates on all of this too.)
+
+**Deploys on merge:** none of the approval stop applies; review this push
+whatever the last verdict was. Your baseline is the commit the last round
+reviewed: the `commit_id` of the latest claude[bot] review with a body.
+Then check whether this push only brought the branch up to date with its
+base, leaving the PR's own changes as they were at that commit:
+
+```bash
+last=<that commit_id>
+git cat-file -e "$last^{commit}" 2>/dev/null \
+  && [ "$(git diff "$(git merge-base "origin/<baseRefName>" "$last")" "$last" | git patch-id --stable)" \
+     = "$(git diff "origin/<baseRefName>...HEAD" | git patch-id --stable)" ]
+```
+
+Success makes this an **update round**: the PR's own diff is unchanged, and
+what is new is the work that came in from the base branch, already reviewed
+on its own PRs. The question is how that incoming work interacts with this
+PR's changes: whether it changes code this PR calls or depends on, touches
+the same files or data, or makes an assumption in this PR untrue. Any
+other outcome (a hand-resolved conflict, new commits of the PR's own, the
+baseline gone after a force-push) is an ordinary round.
 
 Read your prior review bodies. Findings you raised stay open until you
 establish otherwise, and they are the reason a later round exists. Also read
@@ -111,6 +136,10 @@ accordingly — `low` is frequently right. A re-review round is narrower still:
 the approval covered everything up to its commit, so spend in proportion to
 the post-approval delta, not the whole PR.
 
+An update round (deploys on merge) is sized by the same rule, applied to
+the interaction: usually small, but larger when the incoming work changes
+something this PR relies on.
+
 ### 3. Run the engine
 
 Invoke the `code-review` skill via the Skill tool with the level and the PR
@@ -123,17 +152,25 @@ later round, which hunks are the answer to which prior finding, and that you
 want to know what those changes regressed or put at risk, not only whether
 they are correct in themselves. On a re-review round, that the changes since
 the approved commit are the subject: whether they are correct, and whether
-they regress the work the approval covered. Pass the base branch if it is not
-the default.
+they regress the work the approval covered. On an update round, that the
+PR's own changes are unchanged since `<last>`, that the changes the base
+branch brought in (`git diff <last>...origin/<baseRefName>`) were reviewed on
+their own PRs, and that the question is only how the two interact. Pass the
+base branch if it is not the default.
 
 ### 4. Submit one formal review
 
 Decide the outcome first:
 
 - **REQUEST_CHANGES** — something should be fixed before merging.
+  **Deploys on merge:** this turns the PR's review check red, so the PR
+  can't merge until a later round clears it or its owner overrides the
+  check deliberately. Use it exactly when a finding must be fixed before
+  this reaches users.
 - **APPROVE** — nothing blocks a merge. **This ends the review loop**: no
   further rounds run on this PR unless a human reopens it. Do not approve to
-  be done; approve because you are done.
+  be done; approve because you are done. **Deploys on merge:** an approval
+  covers this commit only; the next push gets a round of its own.
 - **COMMENT** — nothing blocks a merge, but you raised things worth reading,
   or you want to see the next revision. Rounds continue.
 
@@ -174,7 +211,8 @@ The first line is plain text — no blockquote or heading — with the short SHA
 and level in backticks. The round is one more than the verdict-bearing (`APPROVED` /
 `CHANGES_REQUESTED`) claude[bot] reviews already on the PR — a bodiless
 `COMMENTED` review is a carrier for inline comments, not a round; on a re-review round write `Round <n> (re-review)`, so the
-record shows the round was asked for, not that the approval gate failed.
+record shows the round was asked for, not that the approval gate failed. On
+an update round write `Round <n> (update from <baseRefName>)`.
 
 "Carried in" is the number of items in the previous round's two Remaining
 sections, and "resolved" is how many of them this revision fixed or filed as
