@@ -138,8 +138,11 @@ it when the Action bumps Claude Code, since the table changes upstream.
   action refuses a run triggered by a bot unless it is on `allowed_bots`, so
   the workflow names the `dot-requirements` GitHub App there. Until
   2026-10-14 every review on its PRs failed with "Workflow initiated by
-  non-human actor". It is named rather than `'*'`, which on a public repo
-  would let any outside App start a review with text it controls.
+  non-human actor". It also names `popover-merge`, the private App that
+  dotrequirements' merge queue uses to bring PRs up to date; without it,
+  every update would fail its review. Bots are named rather than `'*'`, which
+  on a public repo would let any outside App start a review with text it
+  controls.
 - **The token is passed explicitly.** `secrets: inherit` works only within
   one org, so each caller forwards `CLAUDE_CODE_OAUTH_TOKEN`. PopoverAI repos
   can share an org secret; personal-account repos each hold a copy.

@@ -170,13 +170,15 @@ jobs:
         if: steps.decide.outputs.run == 'true'
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # The action refuses runs triggered by a bot not on this list, and
-          # the dotrequirements agent (the dot-requirements GitHub App) opens
-          # and pushes PRs; without this its PRs were never reviewed. Named
-          # rather than '*', which on a public repo would let any outside
-          # App start a review with text it controls. The action lowercases
-          # names and strips "[bot]" before matching.
-          allowed_bots: dot-requirements
+          # The action refuses runs triggered by a bot not on this list. The
+          # dotrequirements agent (the dot-requirements GitHub App) opens and
+          # pushes PRs; without it here its PRs were never reviewed. The
+          # popover-merge App is dotrequirements' merge queue, which brings
+          # PRs up to date with their base branch. Named rather than '*',
+          # which on a public repo would let any outside App start a review
+          # with text it controls. The action lowercases names and strips
+          # "[bot]" before matching.
+          allowed_bots: dot-requirements,popover-merge
           # The skill comes from this repo, not the caller's .claude/: the
           # marketplace is cloned from its default branch on every run.
           plugin_marketplaces: https://github.com/PopoverAI/claude-pr-review.git
