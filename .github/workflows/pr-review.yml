@@ -247,6 +247,16 @@ jobs:
               echo '::error::The reviewer requested changes. Address the review, or merge with the bypass if you have decided to accept the finding.'
               exit 1
             fi
+            # A round that found nothing blocking withdraws its earlier
+            # request for changes (skill step 7). GitHub keeps one in force
+            # through later COMMENT rounds, so a green check here over one
+            # still standing is a PR that says it can merge and can't.
+            standing=$(echo "$reviews" \
+              | jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
+            if [ "$round_state" = "COMMENTED" ] && [ "$standing" -gt 0 ]; then
+              echo '::error::This round found nothing blocking, but an earlier claude[bot] request for changes still stands and holds the merge. Dismiss it, and see the action log for why the round did not.'
+              exit 1
+            fi
             echo "claude[bot] reviews: $PRIOR before, $after after; this round: $round_state."
             exit 0
           fi
