@@ -200,28 +200,28 @@ The shape serves them in that order:
     <Findings that must be fixed before merging. Or "None.">
 
     ## Remaining non-blocking
-    <Findings worth acting on that do not hold the merge: a fix when the
-    branch is next touched, or a ticket still to be filed. Or "None.">
+    <Findings worth acting on that do not hold the merge, for the work
+    session to fix, ticket, or say why it isn't worth doing. Or "None.">
 
     ## Closed
-    <Prior findings this revision resolved or filed as a ticket, each saying
-    how; and findings the engine raised that you are closing, each saying
-    why. Or "None.">
+    <Prior findings this revision resolved, filed as a ticket or set aside
+    with a reason, each saying how; and findings the engine raised that you
+    are closing, each saying why. Or "None.">
 
     ## What ends this review
     <APPROVE: nothing, it is ended. COMMENT: what you want to see next.
     REQUEST_CHANGES: what must change.>
 
 The first line is plain text — no blockquote or heading — with the short SHA
-and level in backticks. The round is one more than the verdict-bearing (`APPROVED` /
-`CHANGES_REQUESTED`) claude[bot] reviews already on the PR — a bodiless
-`COMMENTED` review is a carrier for inline comments, not a round; on a re-review round write `Round <n> (re-review)`, so the
+and level in backticks. The round is one more than the claude[bot] reviews with
+a body already on the PR, whatever their state — a bodiless `COMMENTED` review is
+a carrier for inline comments, not a round; on a re-review round write `Round <n> (re-review)`, so the
 record shows the round was asked for, not that the approval gate failed. On
 an update round write `Round <n> (update from <baseRefName>)`.
 
 "Carried in" is the number of items in the previous round's two Remaining
-sections, and "resolved" is how many of them this revision fixed or filed as
-a ticket. The prior body is the ledger for this line, not the review threads:
+sections, and "resolved" is how many of them this revision fixed, filed as a
+ticket or set aside with a reason. The prior body is the ledger for this line, not the review threads:
 a finding on a line the diff doesn't touch never gets a thread, so the
 threads undercount. Omit the line whenever nothing was carried in — round 1,
 and any round after a body whose Remaining sections both read "None."
@@ -229,9 +229,13 @@ and any round after a body whose Remaining sections both read "None."
 The two Remaining counts are the item counts of their sections, and the
 outcome must agree with them: REQUEST_CHANGES exactly when remaining blocking
 is non-zero. Remaining means work still open on this PR, not findings ever
-raised: a non-blocking finding stays until it is fixed or has a ticket, and
-once a ticket is named in a thread reply or a PR comment it moves to Closed
-with the ticket as the how. An empty
+raised: a non-blocking finding stays until it is fixed, its code is gone, it
+has a ticket, or someone has said why it isn't worth doing. Once a ticket or
+that reason is in a thread reply or a PR comment, the finding moves to Closed
+with it as the how. Take the reason as given: a finding that doesn't hold the
+merge is the work session's or the owner's to set aside, so don't argue it
+round after round. Saying "out of scope" gives no reason; saying who is
+affected and why that's acceptable does. An empty
 section reads "None." rather than disappearing, so the sections are the same
 every round and a search always lands.
 
@@ -315,9 +319,34 @@ what's still wrong instead of resolving.
 gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -f id=<THREAD_ID>
 ```
 
-Resolve only what you verified fixed or saw filed as a ticket. An unresolved
-thread is a standing claim; it should outlive any round that can't discharge
-it.
+Resolve only what you verified fixed, whose code is gone, or that you saw filed
+as a ticket or set aside with a reason. An unresolved thread is a standing
+claim; it should outlive any round that can't discharge it.
+
+### 7. Withdraw a request for changes that no longer stands
+
+When remaining blocking is zero, nothing you left on the PR should still hold
+its merge. GitHub keeps a request for changes in force until the same reviewer
+approves or it is dismissed, and a later `COMMENT` lifts nothing, so a round
+ending in `COMMENT` that says nothing blocks would otherwise be untrue. On any
+round with zero remaining blocking, dismiss every claude[bot] review still in
+the `CHANGES_REQUESTED` state. Substitute `<N>`, the short SHA and the printed
+`<review url>`:
+
+```bash
+gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/pulls/<N>/reviews" \
+  | jq -r '(add // [])[] | select(.user.login == "claude[bot]" and .state == "CHANGES_REQUESTED") | .id' \
+  | while read -r id; do
+      gh api -X PUT "repos/${GITHUB_REPOSITORY}/pulls/<N>/reviews/$id/dismissals" \
+        -f message="Nothing blocking remains as of <short sha>: <review url>" --silent
+    done
+```
+
+The dismissal changes the verdict only: the findings stay on the PR, and the
+threads and the Remaining sections go on saying which are open. Never dismiss
+another reviewer's review. If GitHub refuses a dismissal, post a PR comment
+saying the request for changes still holds the merge and why it was refused;
+the request is then a person's to dismiss.
 
 ## What you never do
 

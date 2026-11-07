@@ -20,6 +20,8 @@ Each fact in the flow has an idiomatic carrier:
 | Findings, actionable by an agent | Inline review comments (path, line, body) |
 | Outcome headline, remaining-finding counts, summary, findings in sections (remaining blocking / remaining non-blocking / closed), what ends the review | The review body |
 | Outcome | Formal review state: APPROVE / REQUEST_CHANGES / COMMENT |
+| Nothing blocking any more | Earlier `claude[bot]` requests for changes dismissed by the round that finds this (skill step 7). GitHub keeps one in force through later COMMENT rounds, so without this a round can say nothing blocks while the PR can't merge |
+| A non-blocking finding set aside | A reason in a thread reply or PR comment, as with a ticket: who is affected and why that's acceptable |
 | "Was it approved?" | Latest `claude[bot]` review state |
 | "Which commit was reviewed?" | The review's `commit_id` |
 | Open vs. addressed findings | Review-thread resolution |
