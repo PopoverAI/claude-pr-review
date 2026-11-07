@@ -250,10 +250,10 @@ jobs:
             # A round that found nothing blocking withdraws its earlier
             # request for changes (skill step 7). GitHub keeps one in force
             # through later COMMENT rounds, so a green check here over one
-            # still standing is a PR that says it can merge and can't.
-            standing=$(echo "$reviews" \
-              | jq '[.[] | select(.state == "CHANGES_REQUESTED")] | length')
-            if [ "$round_state" = "COMMENTED" ] && [ "$standing" -gt 0 ]; then
+            # still standing is a PR that says it can merge and can't. Only
+            # the latest verdict counts: a later approval already lifted any
+            # request before it, dismissed or not.
+            if [ "$round_state" = "COMMENTED" ] && [ "$last_state" = "CHANGES_REQUESTED" ]; then
               echo '::error::This round found nothing blocking, but an earlier claude[bot] request for changes still stands and holds the merge. Dismiss it, and see the action log for why the round did not.'
               exit 1
             fi
